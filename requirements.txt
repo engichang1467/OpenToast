@@ -6,4 +6,5 @@ pyyaml
 fvcore
 Pillow
 tqdm
+wandb
 # downstream (optional): mmdet, mmsegmentation, mmcv, pycocotools
