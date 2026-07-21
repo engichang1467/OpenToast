@@ -22,10 +22,17 @@ def main():
     ap.add_argument("--batch-size", type=int, default=256)
     ap.add_argument("--out", required=True)
     ap.add_argument("--resume", default=None, help="pruned checkpoint from prune_mhsa.py")
+    ap.add_argument("--wandb-project", default=None, help="enable wandb logging under this project")
     args = ap.parse_args()
 
     cfg = load_config(args.config)
     device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    run = None
+    if args.wandb_project:
+        import wandb
+        run = wandb.init(project=args.wandb_project, job_type="finetune",
+                         config={**vars(args), **cfg})
     # Fine-tune the SCWP-pruned model WITHOUT TCS (TCS is inference-only).
     model = build_toast_model(cfg, pretrained=True, scwp=True, tcs=False).to(device)
     if args.resume:
@@ -40,17 +47,30 @@ def main():
     sched = CosineAnnealingLR(opt, T_max=args.epochs)
     crit = nn.CrossEntropyLoss()
 
+    step = 0
     for ep in range(args.epochs):
         model.train()
+        running = 0.0
         for x, y in loader:
             x, y = x.to(device), y.to(device)
             opt.zero_grad()
-            crit(model(x), y).backward()
+            loss = crit(model(x), y)
+            loss.backward()
             opt.step()
+            running += loss.item()
+            step += 1
+            if run:
+                run.log({"train/loss": loss.item(),
+                         "train/lr": sched.get_last_lr()[0], "epoch": ep}, step=step)
         sched.step()
-        print(f"epoch {ep + 1}/{args.epochs} lr={sched.get_last_lr()[0]:.2e}")
+        avg = running / max(1, len(loader))
+        print(f"epoch {ep + 1}/{args.epochs} loss={avg:.4f} lr={sched.get_last_lr()[0]:.2e}")
+        if run:
+            run.log({"train/epoch_loss": avg, "epoch": ep + 1}, step=step)
     torch.save({"state_dict": model.state_dict(), "config": cfg}, args.out)
     print(f"saved finetuned checkpoint -> {args.out}")
+    if run:
+        run.finish()
 
 
 if __name__ == "__main__":

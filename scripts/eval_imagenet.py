@@ -24,10 +24,17 @@ def main():
     ap.add_argument("--data-dir", required=True)
     ap.add_argument("--batch-size", type=int, default=128)
     ap.add_argument("--checkpoint", default=None, help="finetuned SCWP checkpoint")
+    ap.add_argument("--wandb-project", default=None, help="enable wandb logging under this project")
     args = ap.parse_args()
 
     cfg = load_config(args.config)
     device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    run = None
+    if args.wandb_project:
+        import wandb
+        run = wandb.init(project=args.wandb_project, job_type="eval",
+                         config={**vars(args), **cfg})
 
     if args.checkpoint:
         # Load finetuned pruned weights, then attach TCS on top.
@@ -55,6 +62,9 @@ def main():
 
     g = gflops(model, dcfg["input_size"])
     print(f"Top-1 {top1.avg:.2f}  Top-5 {top5.avg:.2f}  GFLOPs(linear) {g:.2f}")
+    if run:
+        run.summary.update({"top1": top1.avg, "top5": top5.avg, "gflops_linear": g})
+        run.finish()
 
 
 if __name__ == "__main__":
