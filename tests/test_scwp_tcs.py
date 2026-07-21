@@ -68,6 +68,37 @@ def test_scwp_shapes_and_interface():
     assert y1.shape == y0.shape == (2, N, D)            # block interface preserved
 
 
+class TimmLikeAttentionQKNorm(TimmLikeAttention):
+    """timm Attention with qk_norm: shared LayerNorm(head_dim) on q and k."""
+    def __init__(self, dim, num_heads):
+        super().__init__(dim, num_heads)
+        self.q_norm = nn.LayerNorm(self.head_dim)
+        self.k_norm = nn.LayerNorm(self.head_dim)
+
+    def forward(self, x):
+        B, N, C = x.shape
+        qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, self.head_dim).permute(2, 0, 3, 1, 4)
+        q, k, v = qkv.unbind(0)
+        q, k = self.q_norm(q), self.k_norm(k)          # normalize over head_dim
+        a = (q @ k.transpose(-2, -1) * self.scale).softmax(-1)
+        o = (a @ v).transpose(1, 2).reshape(B, N, self.attn_dim)
+        return self.proj(o)
+
+
+def test_scwp_qk_norm_sliced():
+    D, H, N = 64, 8, 16
+    attn = TimmLikeAttentionQKNorm(D, H)
+    x = torch.randn(2, N, D)
+    y0 = attn(x)
+    prune_attention(attn, ratio=0.5)                    # dk 8 -> 4
+    dpk = 4
+    # norm params sliced to dpk so the module runs without a shape error
+    assert attn.q_norm.weight.shape == (dpk,) and attn.k_norm.bias.shape == (dpk,)
+    assert attn.q_norm.normalized_shape == (dpk,)
+    y1 = attn(x)
+    assert y1.shape == y0.shape == (2, N, D)
+
+
 # ---------------------------------------------------------------- unit: TCS
 
 class TimmLikeMlp(nn.Module):

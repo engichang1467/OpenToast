@@ -35,13 +35,16 @@ def _coupled_keep_indices(qh, kh, vh, projh, dpk):
     projh:      [D, dk]  (column j = paper W_proj row j, length D).
     Returns sorted LongTensor of length dpk (dims to keep = highest distance).
     """
+    return _coupled_importance(qh, kh, vh, projh).topk(dpk).indices.sort().values
+
+
+def _coupled_importance(qh, kh, vh, projh):
+    """Averaged coupled GM distance per dk dimension. Returns [dk] (low=redundant)."""
     x_qk = torch.cat([qh, kh], dim=1)            # [dk, 2D]
     x_vo = torch.cat([vh, projh.t()], dim=1)     # [dk, 2D]
     i_qk = (x_qk - geometric_median(x_qk)).norm(dim=1)
     i_vo = (x_vo - geometric_median(x_vo)).norm(dim=1)
-    importance = 0.5 * (i_qk + i_vo)             # low = redundant (near GM)
-    keep = importance.topk(dpk).indices          # keep most distinctive dims
-    return keep.sort().values
+    return 0.5 * (i_qk + i_vo)
 
 
 @torch.no_grad()
@@ -63,10 +66,19 @@ def prune_attention(attn, ratio):
     if b is not None:
         bq, bk, bv = b[:D].reshape(H, dk), b[D:2 * D].reshape(H, dk), b[2 * D:].reshape(H, dk)
 
+    # q_norm/k_norm (timm qk_norm) are a single LayerNorm/RMSNorm shared over
+    # head_dim across all heads. Per-head keep indices can't slice a shared
+    # param vector consistently, so when qk_norm is active we select ONE keep
+    # set (importance summed across heads) and reuse it for every head. This
+    # keeps the head-wise-uniform count while letting us slice the norm once.
+    imps = [_coupled_importance(q[h], k[h], v[h], proj[:, h, :]) for h in range(H)]
+    has_qk_norm = _affine(getattr(attn, "q_norm", None)) or _affine(getattr(attn, "k_norm", None))
+    shared_keep = torch.stack(imps).sum(0).topk(dpk).indices.sort().values if has_qk_norm else None
+
     nq, nk, nv, nproj = [], [], [], []
     nbq, nbk, nbv = [], [], []
     for h in range(H):
-        keep = _coupled_keep_indices(q[h], k[h], v[h], proj[:, h, :], dpk)
+        keep = shared_keep if has_qk_norm else imps[h].topk(dpk).indices.sort().values
         nq.append(q[h][keep]); nk.append(k[h][keep]); nv.append(v[h][keep])
         nproj.append(proj[:, h, :][:, keep])      # [D, dpk]
         if b is not None:
@@ -86,6 +98,9 @@ def prune_attention(attn, ratio):
         new_proj.bias.copy_(attn.proj.bias)
 
     attn.qkv, attn.proj = new_qkv, new_proj
+    if has_qk_norm:
+        _slice_norm(getattr(attn, "q_norm", None), shared_keep, dpk)
+        _slice_norm(getattr(attn, "k_norm", None), shared_keep, dpk)
     # timm reads self.head_dim (reshape) and self.attn_dim (output reshape).
     # Swin's WindowAttention infers head_dim via reshape(-1) and has no attn_dim.
     if hasattr(attn, "head_dim"):
@@ -93,6 +108,22 @@ def prune_attention(attn, ratio):
     if hasattr(attn, "attn_dim"):
         attn.attn_dim = H * dpk
     attn.scale = dpk ** -0.5
+
+
+def _affine(norm):
+    """True if norm is a real (learnable) LayerNorm/RMSNorm over head_dim."""
+    return norm is not None and getattr(norm, "weight", None) is not None
+
+
+def _slice_norm(norm, keep, dpk):
+    """Slice a shared head_dim LayerNorm/RMSNorm to the kept indices."""
+    if not _affine(norm):
+        return
+    norm.weight = nn.Parameter(norm.weight.data[keep].clone())
+    if getattr(norm, "bias", None) is not None:
+        norm.bias = nn.Parameter(norm.bias.data[keep].clone())
+    if hasattr(norm, "normalized_shape"):
+        norm.normalized_shape = (dpk,)
 
 
 def _is_attn(m):
