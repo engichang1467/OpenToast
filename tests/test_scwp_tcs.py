@@ -172,6 +172,28 @@ def test_real_deit_small_end_to_end():
     print(f"deit-small linear GFLOPs (x1): {g_base/2:.2f} -> {g_toast/2:.2f}")
 
 
+def test_real_deit_cls_attention_capture():
+    timm = _timm()
+    if timm is None:
+        print("SKIP real deit cls-attn (no timm)"); return
+    m = timm.create_model("deit_small_patch16_224", pretrained=False, num_classes=1000).eval()
+    x = torch.randn(2, 3, 224, 224)
+    fc1 = [0] * 10 + [0.5, 0.5]
+    fc2 = [0] * 7 + [0.8, 0.8, 0.9, 0.9, 0.9]
+    apply_tcs(m, fc1, fc2, use_attn=True)                 # Eq.6 path + hooks
+    with torch.no_grad():
+        y = m(x)
+    assert y.shape == (2, 1000)
+    # a pruned block's MLP received CLS->token weights from its attention hook
+    mlp = m.blocks[-1].mlp
+    assert hasattr(mlp, "_cls_attn")
+    N = 1 + (224 // 16) ** 2                              # cls + patches
+    assert mlp._cls_attn.shape == (2, N)
+    # weights are a softmax over tokens: non-negative, rows ~sum to 1
+    assert (mlp._cls_attn >= 0).all()
+    assert torch.allclose(mlp._cls_attn.sum(-1), torch.ones(2), atol=1e-4)
+
+
 def test_real_swin_tiny_scwp():
     timm = _timm()
     if timm is None:
