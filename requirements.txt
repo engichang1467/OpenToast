@@ -1,0 +1,9 @@
+torch>=2.0
+timm>=0.9
+numpy
+scipy
+pyyaml
+fvcore
+Pillow
+tqdm
+# downstream (optional): mmdet, mmsegmentation, mmcv, pycocotools

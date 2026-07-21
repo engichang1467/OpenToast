@@ -1,0 +1,11 @@
+# ViT-MAE-Huge (32 layers). No CLS-distillation -> magnitude TCS (Eq.7).
+# Only FC2 pruned in the final 8 layers; FC1 only on the last layer.
+timm_name: vit_huge_patch14_224.mae
+mhsa_ratio: 0.90
+mhsa_skip: [0]
+use_attn: false
+sample_lo: 0.02
+sample_hi: 0.20
+# layers 1-24 = 0
+fc1_ratios: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,   0,   0,   0,   0,   0,   0,   0.2]
+fc2_ratios: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0.8, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9]
