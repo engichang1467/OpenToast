@@ -9,16 +9,13 @@ from timm.utils import accuracy, AverageMeter
 
 from toast.models import build_toast_model, load_config
 from toast.tcs import apply_tcs
+from toast.flops import count_linear_gflops
 
 
 def gflops(model, input_size):
-    try:
-        from fvcore.nn import FlopCountAnalysis
-    except ImportError:
-        return None
     model.eval()
     x = torch.zeros(1, *input_size, device=next(model.parameters()).device)
-    return FlopCountAnalysis(model, x).total() / 1e9
+    return count_linear_gflops(model, x)
 
 
 def main():
@@ -57,7 +54,7 @@ def main():
             top1.update(a1.item(), x.size(0)); top5.update(a5.item(), x.size(0))
 
     g = gflops(model, dcfg["input_size"])
-    print(f"Top-1 {top1.avg:.2f}  Top-5 {top5.avg:.2f}  GFLOPs {g if g else 'n/a'}")
+    print(f"Top-1 {top1.avg:.2f}  Top-5 {top5.avg:.2f}  GFLOPs(linear) {g:.2f}")
 
 
 if __name__ == "__main__":

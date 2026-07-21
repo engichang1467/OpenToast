@@ -86,9 +86,12 @@ def prune_attention(attn, ratio):
         new_proj.bias.copy_(attn.proj.bias)
 
     attn.qkv, attn.proj = new_qkv, new_proj
-    # timm ViT/DeiT read self.head_dim; Swin infers via reshape(-1). Update both.
+    # timm reads self.head_dim (reshape) and self.attn_dim (output reshape).
+    # Swin's WindowAttention infers head_dim via reshape(-1) and has no attn_dim.
     if hasattr(attn, "head_dim"):
         attn.head_dim = dpk
+    if hasattr(attn, "attn_dim"):
+        attn.attn_dim = H * dpk
     attn.scale = dpk ** -0.5
 
 
