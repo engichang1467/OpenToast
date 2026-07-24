@@ -1,0 +1,15 @@
+# Swin-Small. Stages [2,2,18,2] = 24 blocks (same depth as Swin-Base).
+#   stage0: 0,1 | stage1: 2,3 | stage2: 4..21 | stage3: 22,23
+# MHSA skips the first block of each stage (global idx 0,2,4,22).
+# Non-CLS -> magnitude TCS (Eq.7).
+# FC2 0.9 from block 14 (idx13) onward: latter half of stage2 + stage3 (~11 blocks).
+# FC1 0.3 only on the final block (idx23).
+timm_name: swin_small_patch4_window7_224.ms_in1k
+mhsa_ratio: 0.90
+mhsa_skip: [0, 2, 4, 22]
+use_attn: false
+sample_lo: 0.02
+sample_hi: 0.20
+# idx:      0 1 2 3 4 5 6 7 8 9 10 11 12 13  14  15  16  17  18  19  20  21  22  23
+fc1_ratios: [0,0,0,0,0,0,0,0,0,0,0, 0, 0, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0.3]
+fc2_ratios: [0,0,0,0,0,0,0,0,0,0,0, 0, 0, 0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9]

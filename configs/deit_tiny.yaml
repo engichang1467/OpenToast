@@ -1,0 +1,11 @@
+# DeiT-Tiny (12 layers). CLS-distilled -> attention-guided TCS (Eq.6).
+# Tiny model: MHSA ratio 0.80 (paper uses 0.80 for tiny, 0.90 otherwise).
+timm_name: deit_tiny_patch16_224.fb_in1k
+mhsa_ratio: 0.80
+mhsa_skip: [0]           # skip layer 1 (embedding interface)
+use_attn: true           # CLS-distilled: lam_cls=2.0, lam_patch=1.0
+sample_lo: 0.02
+sample_hi: 0.20
+#         L1  L2  L3  L4  L5  L6  L7  L8   L9   L10  L11  L12
+fc1_ratios: [0, 0, 0, 0, 0, 0, 0, 0,   0,   0,   0.5, 0.5]
+fc2_ratios: [0, 0, 0, 0, 0, 0, 0, 0.8, 0.8, 0.9, 0.9, 0.9]

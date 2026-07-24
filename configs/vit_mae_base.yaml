@@ -1,0 +1,18 @@
+# ViT-MAE-Base (12 layers). No CLS-distillation -> magnitude TCS (Eq.7).
+#
+# WARNING: exact per-layer FC1/FC2 NOT in the paper (only ViT-MAE-Huge is
+# tabulated, Table 12) and the official repo is unavailable (404). The ratios
+# below are EXTRAPOLATED from the MAE-family "fc2-heavy" pattern: prune only the
+# final ~25% of layers, FC1 on the last layer only. Swap in official values when
+# they surface. See README "open items".
+# ponytail: extrapolated ratios, replace with official per-layer table when published.
+timm_name: vit_base_patch16_224.mae
+mhsa_ratio: 0.90
+mhsa_skip: [0]
+use_attn: false
+sample_lo: 0.02
+sample_hi: 0.20
+# layers 1-9 = 0; prune final 3 (fc2-heavy)
+#         L1 L2 L3 L4 L5 L6 L7 L8 L9 L10  L11  L12
+fc1_ratios: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0.2]
+fc2_ratios: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0.8, 0.9, 0.9]

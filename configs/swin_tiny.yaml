@@ -1,0 +1,20 @@
+# Swin-Tiny. Stages [2,2,6,2] = 12 blocks (global order idx 0..11).
+#   stage0: 0,1 | stage1: 2,3 | stage2: 4..9 | stage3: 10,11
+# MHSA skips the first block of each stage (global idx 0,2,4,10).
+# Non-CLS -> magnitude TCS (Eq.7).
+#
+# WARNING: exact per-layer FC1/FC2 NOT in the paper (only Swin-Base is tabulated,
+# Table 13) and the official repo is unavailable (404). The ratios below are
+# EXTRAPOLATED from the Swin-family stage-adaptive pattern: FC1 0.3 on the final
+# block only; FC2 0.9 on the latter half of stage2 + stage3. Swap in official
+# values when they surface. See README "open items".
+# ponytail: extrapolated ratios, replace with official per-layer table when published.
+timm_name: swin_tiny_patch4_window7_224.ms_in1k
+mhsa_ratio: 0.90
+mhsa_skip: [0, 2, 4, 10]
+use_attn: false
+sample_lo: 0.02
+sample_hi: 0.20
+# idx:      0 1 2 3 4 5 6 7   8    9    10   11
+fc1_ratios: [0,0,0,0,0,0,0,0,  0,   0,   0,   0.3]
+fc2_ratios: [0,0,0,0,0,0,0,0.9,0.9, 0.9, 0.9, 0.9]
