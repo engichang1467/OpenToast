@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Download + unzip COCO 2017 val images (~1GB, 5000 images).
 # Usage: scripts/download_coco_train2017.sh [DEST_DIR]   (default: data/coco)
-# bash scripts/download_coco_train.sh /data/coco2017
+# bash scripts/data/download_coco_train.sh /data/coco2017
 set -euo pipefail
 
 URL="https://s3.amazonaws.com/images.cocodataset.org/zips/train2017.zip"

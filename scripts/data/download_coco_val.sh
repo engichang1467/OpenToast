@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Download + unzip COCO 2017 val images (~1GB, 5000 images).
-# Usage: scripts/download_coco_val2017.sh [DEST_DIR]   (default: data/coco)
+# Usage: scripts/data/download_coco_val2017.sh [DEST_DIR]   (default: data/coco)
 set -euo pipefail
 
 URL="http://images.cocodataset.org/zips/val2017.zip"

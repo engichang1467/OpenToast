@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Download + unzip ADE20K (ADEChallengeData2016, ~1GB): images + seg annotations,
 # train + val. This is the ADE20K used by UPerNet (README downstream/ade20k).
-# Usage: scripts/download_ade20k.sh [DEST_DIR]   (default: data/ade20k)
+# Usage: scripts/data/download_ade20k.sh [DEST_DIR]   (default: data/ade20k)
 set -euo pipefail
 
 URL="http://data.csail.mit.edu/places/ADEchallenge/ADEChallengeData2016.zip"
