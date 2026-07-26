@@ -1,0 +1,26 @@
+[project]
+name = "open-toast"
+version = "0.1.0"
+description = "Reimplementation of ToaSt: Token Channel Selection and Structured Pruning for Efficient ViT"
+requires-python = ">=3.9"
+dependencies = [
+    "torch>=2.0",
+    "timm>=0.9",
+    "numpy",
+    "scipy",
+    "pyyaml",
+    "fvcore",
+    "Pillow",
+    "tqdm",
+    "wandb",
+]
+
+# Downstream detection/segmentation tables only (mmdet, mmsegmentation, mmcv,
+# pycocotools). Not installed by default -- mmcv needs a CUDA-matched wheel.
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["toast"]
